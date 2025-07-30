@@ -1,0 +1,179 @@
+use actix_web::{
+    App, HttpResponse, HttpServer, Responder, delete, get, middleware, middleware::Logger, post,
+    put, web,
+};
+use dotenv::dotenv;
+use env_logger::Env;
+use log::info;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Mutex};
+use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Clone)]
+struct Todo {
+    id: String,
+    title: String,
+    description: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct CreateTodoRequest {
+    title: String,
+    description: String,
+}
+
+struct AppState {
+    todo: Mutex<Vec<Todo>>,
+}
+
+#[get("/todos")]
+async fn get_all_todos(
+    data: web::Data<AppState>,
+    query_params: web::Query<HashMap<String, String>>,
+) -> impl Responder {
+    let todos = data.todo.lock().unwrap();
+    info!("Query params: {:?}", query_params);
+    // http://127.0.0.1:3000/todos?limit=10&cursor=0
+    // -> Query params: Query({"limit": "10", "cursor": "0"})
+    HttpResponse::Ok().json(&*todos)
+}
+
+#[get("/todos/{id}")]
+async fn get_todo_by_id(app_state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+    let todos = app_state.todo.lock().unwrap();
+    let todo_id = path.into_inner();
+
+    if let Some(todo) = todos.iter().find(|todo| todo.id == todo_id) {
+        HttpResponse::Ok().json(todo)
+    } else {
+        HttpResponse::NotFound().json(serde_json::json!({
+            "error": "Todo not found"
+        }))
+    }
+}
+
+#[post("/todos")]
+async fn create_todo(
+    app_state: web::Data<AppState>,
+    body: web::Json<CreateTodoRequest>,
+) -> impl Responder {
+    // Vì app_state là mutex share giữa các thread, nên cần lock để tránh race condition và dùng unwrap để lấy giá trị bên trong hoặc panic nếu lỗi
+    let mut todos = app_state.todo.lock().unwrap();
+
+    // Dùng destructuring để lấy title và description từ body
+    let CreateTodoRequest { title, description } = body.into_inner();
+
+    // Kiểm tra title đã tồn tại chưa
+    if todos.iter().any(|t| t.title == title) {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Todo with this title already exists"
+        }));
+    }
+
+    todos.push(Todo {
+        id: Uuid::new_v4().to_string(),
+        title,
+        description,
+    });
+
+    // HttpResponse::json() cần truyền vào &T
+    // Nếu truyền mỗi todos thì nó là MutexGuard<Vec<Todo>> không phải là &T
+    // Nếu truyền &todos thì nó là &MutexGuard<Vec<Todo>> -> sai kiểu, đang mượn MutexGuard, không phải Vec<Todo>
+    // Nếu truyền *todos thì nó là Vec<Todo> -> mất ownership của mutex
+    // Nếu truyền &*todos thì nó là &Vec<Todo> -> đúng kiểu, không mượn MutexGuard
+    // HttpResponse::Created().json(&*todos)
+    HttpResponse::Created().json(todos.last().unwrap())
+}
+
+#[put("/todos/{id}")]
+async fn update_todo(
+    data: web::Data<AppState>,
+    path: web::Path<String>,
+    todo: web::Json<Todo>,
+) -> impl Responder {
+    let mut todos = data.todo.lock().unwrap();
+    let todo_id = path.into_inner();
+    let updated_todo = todo.into_inner();
+
+    // Kiểm tra todo có tồn tại không
+    if !todos.iter().any(|t| t.id == todo_id) {
+        return HttpResponse::NotFound().json(serde_json::json!({
+            "error": "Todo not found"
+        }));
+    }
+
+    // Kiểm tra title mới có trùng với todo khác không (trừ chính nó)
+    if todos
+        .iter()
+        .any(|t| t.id != todo_id && t.title == updated_todo.title)
+    {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Todo with this title already exists"
+        }));
+    }
+
+    // Cập nhật todo
+    if let Some(existing_todo) = todos.iter_mut().find(|t| t.id == todo_id) {
+        existing_todo.title = updated_todo.title;
+        existing_todo.description = updated_todo.description;
+    }
+
+    HttpResponse::Ok().json(&*todos)
+}
+
+#[delete("/todos/{id}")]
+async fn delete_todo(data: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+    let mut todos = data.todo.lock().unwrap();
+    let todo_id = path.into_inner();
+    let initial_len = todos.len();
+    todos.retain(|todo| todo.id != todo_id);
+
+    if todos.len() < initial_len {
+        HttpResponse::Ok().json(&*todos)
+    } else {
+        HttpResponse::NotFound().json(serde_json::json!({
+            "error": "Todo not found"
+        }))
+    }
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    dotenv().ok();
+
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
+    let app_state = web::Data::new(AppState {
+        todo: Mutex::new(vec![]),
+    });
+
+    HttpServer::new(move || {
+        // Actix Web tạo một App cho mỗi thread worker (mỗi CPU core), nhằm đảm bảo xử lý song song tốt nhất
+        // Ví dụ: khi Actix Web chạy với nhiều thread (ví dụ: 4 threads), thì nó sẽ tạo 4 App instance riêng biệt (1 trên mỗi thread)
+        // Do đó, nếu bạn tạo dữ liệu bên trong App::new() thì mỗi thread có một bản riêng biệt → không chia sẻ được
+        // Điều này không phù hợp nếu bạn muốn toàn bộ app chia sẻ chung một dữ liệu như db connection, counter..., ví dụ như Arc<Mutex<Counter>>.
+        // Nếu muốn chia sẽ dữ liệu giữa các thread, dữ liệu đó phải:
+        // 1. An toàn cho đa luồng (Send + Sync)
+        // 2.Được bọc trong Arc (hoặc các smart pointer phù hợp)
+        // Để tránh điều đó, bạn nên tạo web::Data::new(...) bên ngoài App::new(), rồi share vào tất cả App.
+        App::new()
+            .wrap(Logger::default())
+            .wrap(middleware::Compress::default())
+            .wrap(middleware::DefaultHeaders::new().add(("X-Version", "1.0")))
+            .app_data(app_state.clone())
+            .service(get_all_todos)
+            .service(get_todo_by_id)
+            .service(create_todo)
+            .service(update_todo)
+            .service(delete_todo)
+            .default_service(web::route().to(|| async {
+                HttpResponse::NotFound().json(serde_json::json!({
+                    "code": "NOT_FOUND",
+                    "message": "Not found"
+                }))
+            }))
+    })
+    .bind(("0.0.0.0", 3000))?
+    .run()
+    .await
+}
