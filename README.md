@@ -1,6 +1,6 @@
 ## 1. Run dev
 
-$ cargo watch -x run
+$ watchexec -e rs -r cargo run
 
 ## 2. Run build production
 
