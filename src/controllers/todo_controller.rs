@@ -2,14 +2,25 @@ use actix_web::{
     HttpResponse, Responder, delete, get, post, put, web,
     web::{Data, Json, Path},
 };
+use sea_orm::EntityTrait;
 
-use log::info;
-
-use crate::{models::todo::Todo, services::todo_service::TodoService};
+use crate::{
+    models::{app_state::AppState, todo::Todo},
+    services::todo_service::TodoService,
+};
+use entity::t_users;
 
 #[get("")]
-pub async fn get_todos(todo_service: Data<TodoService>) -> impl Responder {
-    HttpResponse::Ok().json(todo_service.get_todos())
+pub async fn get_todos(app_state: Data<AppState>) -> impl Responder {
+    let users = t_users::Entity::find().all(&app_state.db).await;
+
+    match users {
+        Ok(u) => HttpResponse::Ok().json(u),
+        Err(e) => {
+            log::error!("Error: {}", e);
+            HttpResponse::InternalServerError().body("Error")
+        }
+    }
 }
 
 #[get("/{id}")]
@@ -25,10 +36,7 @@ pub async fn get_todo_by_id(todo_service: Data<TodoService>, id: Path<String>) -
 
 #[post("")]
 pub async fn create_todo(todo_service: Data<TodoService>, new_todo: Json<Todo>) -> impl Responder {
-    info!("new_todo: {:?}", new_todo);
     let result = todo_service.create_todo(new_todo.0);
-
-    info!("create todo result: {:?}", result);
 
     Json(result)
 }
