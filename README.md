@@ -9,7 +9,9 @@ $ cargo build --release
 ## 3. Run stress test
 
 $ docker run --rm --network host williamyeh/wrk -t12 -c400 -d30s http://127.0.0.1:3000/ping
+
 $ docker run --rm --network host -v "%cd%\wrk-test\login.lua:/login.lua" williamyeh/wrk -t12 -c400 -d30s -s /login.lua http://192.168.1.9:3000/auth/login
+
 $ docker run --rm --network host -v "%cd%\wrk-test\auth-me.lua:/auth-me.lua" williamyeh/wrk -t12 -c400 -d30s -s /auth-me.lua http://192.168.1.9:3000/auth/me
 
 ## 4. SeaORM
