@@ -16,3 +16,10 @@ pub static DATABASE_URL: Lazy<String> = Lazy::new(|| {
 pub static JWT_SECRET: Lazy<String> = Lazy::new(|| {
     env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key-change-in-production".to_string())
 });
+
+pub static DB_MAX_CONNECTIONS: Lazy<u32> = Lazy::new(|| {
+    env::var("DB_MAX_CONNECTIONS")
+        .unwrap_or_else(|_| "10".to_string())
+        .parse()
+        .expect("DB_MAX_CONNECTIONS must be a valid number")
+});
