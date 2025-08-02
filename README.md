@@ -50,3 +50,15 @@ $ docker run --rm --network host -v "%cd%\wrk-test\auth-me.lua:/auth-me.lua" wil
 - Ratelimit
 - Swagger
 - Global error handler
+- mqtt with emqx
+- websocket
+
+## 6. Refers
+
+- https://www.youtube.com/watch?v=aZmrfizffL0&list=PLGOIZXklfFkRh8jHNY8070KUl86Tj3Ztf
+- https://dev.to/chaudharypraveen98/form-validation-in-rust-404l
+- https://github/trasherr/Blogging-API-Actix-Web
+- https://github/dheshanm/ToDo-Sea-ORM
+- https://github.com/SeaQL/sea-query
+- https://github.com/actix/examples
+- https://actix.rs/docs
