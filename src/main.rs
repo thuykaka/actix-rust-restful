@@ -13,6 +13,7 @@ use app_state::AppState;
 use controllers::{auth_controller, home_controller, not_found_controller};
 use dotenv::dotenv;
 use env_logger::Env;
+use middlewares::rate_limit_middleware::rate_limiter_middleware;
 use models::errors::Error;
 use std::sync::Arc;
 use utils::response_handler::validator_error_handler;
@@ -35,12 +36,14 @@ async fn main() -> Result<(), Error> {
             .wrap(middleware::Compress::default())
             .wrap(Cors::permissive()) // allow all origins
             .wrap(middleware::DefaultHeaders::new().add(("x-powered-by", "actix-web")))
+            .wrap(rate_limiter_middleware())
             .validator_error_handler(Arc::new(validator_error_handler))
             .app_data(app_data.clone())
             .configure(home_controller::config)
             .configure(auth_controller::config)
             .default_service(web::route().to(not_found_controller::not_found_handler))
     })
+    .workers(2)
     .bind(("0.0.0.0", *config::PORT))?
     .run()
     .await

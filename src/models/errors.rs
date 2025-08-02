@@ -22,6 +22,9 @@ pub enum Error {
 
     #[error("Internal Server Error: {0}")]
     InternalServerError(String),
+
+    #[error("Too Many Requests")]
+    TooManyRequests,
 }
 
 // Dùng cho auth_mw
@@ -42,26 +45,28 @@ impl ErrorToHttp for Error {
             Error::Unauthorized => HttpResponse::Unauthorized().json(json!({
                 "status_code": 401,
                 "message": "Unauthorized",
-                "errors": []
             })),
 
             Error::UnauthorizedWithMessage(message) => HttpResponse::Unauthorized().json(json!({
                 "status_code": 401,
                 "message": message,
-                "errors": []
             })),
 
             Error::BadRequest(message) => HttpResponse::BadRequest().json(json!({
                 "status_code": 400,
                 "message": message,
-                "errors": []
             })),
+
+            Error::TooManyRequests => HttpResponse::TooManyRequests().json(json!({
+                "status_code": 429,
+                "message": "Too Many Requests",
+            })),
+
             _ => {
                 log::error!("Internal server error: {:?}", self);
                 HttpResponse::InternalServerError().json(json!({
                     "status_code": 500,
                     "message": "Internal server error",
-                    "errors": []
                 }))
             } // 5xx Server Errors
         }

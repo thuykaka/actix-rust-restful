@@ -7,6 +7,7 @@ edition = "2024"
 # Web framework cho Rust - tạo HTTP server và API endpoints
 actix-web = "4.11.0"
 actix-cors = "0.7.1"
+actix-web-ratelimit = "0.1.1"
 
 # Logging utilities
 env_logger = "0.11.8"  # Logger implementation cho env_logger
@@ -47,3 +48,4 @@ derive_more = "2.0.1"  # Additional derive macros (Display, etc.)
 
 # Text processing
 regex = "1.11.1"  # Regular expressions
+
