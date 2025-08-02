@@ -23,3 +23,17 @@ pub static DB_MAX_CONNECTIONS: Lazy<u32> = Lazy::new(|| {
         .parse()
         .expect("DB_MAX_CONNECTIONS must be a valid number")
 });
+
+pub static RATE_LIMIT_MAX_REQUESTS: Lazy<usize> = Lazy::new(|| {
+    env::var("RATE_LIMIT_MAX_REQUESTS")
+        .unwrap_or_else(|_| "100".to_string())
+        .parse()
+        .expect("RATE_LIMIT_MAX_REQUESTS must be a valid number")
+});
+
+pub static RATE_LIMIT_WINDOW_SECS: Lazy<u64> = Lazy::new(|| {
+    env::var("RATE_LIMIT_WINDOW_SECS")
+        .unwrap_or_else(|_| "60".to_string())
+        .parse()
+        .expect("RATE_LIMIT_WINDOW_SECS must be a valid number")
+});
