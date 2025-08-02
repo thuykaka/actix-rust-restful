@@ -3,8 +3,8 @@ use std::time::Instant;
 use crate::{
     models::{
         errors::Error,
-        request::{SignInRequest, SignUpRequest},
-        response::{MeResponse, SignInResponse, SignUpResponse},
+        request::{SignInRequest, SignUpRequest, UpdateUserRequest},
+        response::{MeResponse, SignInResponse, SignUpResponse, UpdateUserResponse},
     },
     utils::{
         hash::{hash_password, verify_password},
@@ -12,8 +12,8 @@ use crate::{
     },
 };
 use entity::t_users;
-use sea_orm::DatabaseConnection;
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{DatabaseConnection, IntoActiveModel};
 
 #[derive(Clone)]
 pub struct AuthService {
@@ -28,10 +28,7 @@ impl AuthService {
     pub async fn me(&self, id: String) -> Result<MeResponse, Error> {
         let start_time = Instant::now();
 
-        let user_id = id.parse::<i32>().map_err(|_| {
-            log::error!("Invalid user ID format: {}", id);
-            Error::InvalidId(id)
-        })?;
+        let user_id = id.parse::<i32>().map_err(|_| Error::Unauthorized)?;
 
         let user = t_users::Entity::find_by_id(user_id)
             .one(&self.db)
@@ -79,6 +76,28 @@ impl AuthService {
             token,
             user: user.into(),
         })
+    }
+
+    pub async fn update(
+        &self,
+        id: String,
+        body: UpdateUserRequest,
+    ) -> Result<UpdateUserResponse, Error> {
+        let user_id = id.parse::<i32>().map_err(|_| Error::Unauthorized)?;
+
+        let mut user = t_users::Entity::find_by_id(user_id)
+            .one(&self.db)
+            .await?
+            .ok_or_else(|| Error::Unauthorized)?
+            .into_active_model();
+
+        if let Some(name) = body.name {
+            user.name = Set(name);
+        }
+        user.password = Set(hash_password(&body.password));
+        let updated_user = user.update(&self.db).await?;
+
+        Ok(UpdateUserResponse(updated_user.into()))
     }
 
     pub async fn sign_up(&self, body: SignUpRequest) -> Result<SignUpResponse, Error> {

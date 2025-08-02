@@ -1,5 +1,5 @@
 use crate::models::errors::Error;
-use actix_web::HttpResponse;
+use actix_web::{HttpResponse, ResponseError};
 use serde_json::json;
 
 #[allow(unused_imports)]
@@ -49,8 +49,15 @@ impl ErrorToHttp for Error {
     }
 }
 
+impl ResponseError for Error {
+    fn error_response(&self) -> HttpResponse {
+        self.to_http_response()
+    }
+}
+
 #[macro_export]
 macro_rules! handle_response {
+    // Truyền mỗi Result<T, Error> vào macro này
     ($result:expr) => {{
         // Macro trong Rust không "kế thừa" context use từ nơi nó được định nghĩa, mà phụ thuộc vào context nơi nó được gọi.
         use actix_web::HttpResponse;
@@ -63,6 +70,7 @@ macro_rules! handle_response {
             }
         }
     }};
+    // Truyền cả Result<T, Error> và status code vào macro này
     ($result:expr, $success_status:expr) => {{
         use actix_web::{HttpResponse, http::StatusCode};
 

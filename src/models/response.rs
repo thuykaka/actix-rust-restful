@@ -16,3 +16,6 @@ pub struct SignInResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MeResponse(pub User);
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UpdateUserResponse(pub User);
