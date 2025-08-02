@@ -46,7 +46,7 @@ $ docker run --rm --network host -v "%cd%\wrk-test\auth-me.lua:/auth-me.lua" wil
 - Using redis
 - Queue
 - Upload file
-- CORS
+- [✔️] ~~CORS: https://github.com/actix/actix-extras/tree/master/actix-cors~~
 - Ratelimit
 - Swagger
 - Global error handler
