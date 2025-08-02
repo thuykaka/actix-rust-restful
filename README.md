@@ -10,6 +10,12 @@ $ watchexec -e rs -r cargo run
 $ cargo build --release
 ```
 
+Docker build
+
+```sh
+docker build -t actix_rust_restful_docker .
+```
+
 ## 3. Run stress test
 
 ```sh
@@ -31,3 +37,28 @@ $ docker run --rm --network host -v "%cd%\wrk-test\auth-me.lua:/auth-me.lua" wil
   These attributes and their values are grouped in a Rust struct (a Model) so that you can manipulate them.
 
   However, Model is for read operations only. To perform insert, update, or delete, you need to use ActiveModel which attaches meta-data on each attribute.
+
+## 5. Todo
+
+- [✔️] ~~SeaOrm: https://github.com/SeaQL/sea-query#table-create + https://www.sea-ql.org/~~
+- [✔️] ~~Validation: https://github.com/ranger-ross/actix-web-validation + https://github.com/Keats/validator~~
+- Using http request
+- Using redis
+- Queue
+- Upload file
+- CORS
+- Ratelimit
+- Swagger
+- Global error handler
+- mqtt with emqx
+- websocket
+
+## 6. Refers
+
+- https://www.youtube.com/watch?v=aZmrfizffL0&list=PLGOIZXklfFkRh8jHNY8070KUl86Tj3Ztf
+- https://dev.to/chaudharypraveen98/form-validation-in-rust-404l
+- https://github/trasherr/Blogging-API-Actix-Web
+- https://github/dheshanm/ToDo-Sea-ORM
+- https://github.com/SeaQL/sea-query
+- https://github.com/actix/examples
+- https://actix.rs/docs

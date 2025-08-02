@@ -1,56 +1,11 @@
-use crate::models::errors::Error;
-use actix_web::HttpResponse;
+use actix_web::{Error, HttpRequest, HttpResponse, ResponseError, body, http};
+use derive_more::Display;
+use serde::Serialize;
 use serde_json::json;
-
-#[allow(unused_imports)]
-pub trait ErrorToHttp {
-    fn to_http_response(&self) -> HttpResponse;
-}
-
-impl ErrorToHttp for Error {
-    fn to_http_response(&self) -> HttpResponse {
-        match self {
-            Error::EmailAlreadyExists => HttpResponse::Conflict().json(json!({
-                "message": "Email already exists"
-            })),
-            Error::InvalidEmail => HttpResponse::BadRequest().json(json!({
-                "message": "Invalid email format"
-            })),
-            Error::PasswordTooShort => HttpResponse::BadRequest().json(json!({
-                "message": "Password too short"
-            })),
-            Error::InvalidId(id) => HttpResponse::BadRequest().json(json!({
-                "message": format!("Invalid ID: {}", id)
-            })),
-            Error::NotFound(message) => HttpResponse::NotFound().json(json!({
-                "message": message
-            })),
-            Error::InvalidCredentials => HttpResponse::Unauthorized().json(json!({
-                "message": "Invalid credentials"
-            })),
-            Error::Unauthorized => HttpResponse::Unauthorized().json(json!({
-                "message": "Unauthorized"
-            })),
-            Error::Forbidden => HttpResponse::Forbidden().json(json!({
-                "message": "Forbidden"
-            })),
-            Error::WrongEmailOrPassword => HttpResponse::Unauthorized().json(json!({
-                "message": "Wrong email or password"
-            })),
-
-            // 5xx Server Errors
-            _ => {
-                log::error!("Internal server error: {:?}", self);
-                HttpResponse::InternalServerError().json(json!({
-                    "message": "Internal server error"
-                }))
-            }
-        }
-    }
-}
 
 #[macro_export]
 macro_rules! handle_response {
+    // Truyền mỗi Result<T, Error> vào macro này
     ($result:expr) => {{
         // Macro trong Rust không "kế thừa" context use từ nơi nó được định nghĩa, mà phụ thuộc vào context nơi nó được gọi.
         use actix_web::HttpResponse;
@@ -58,11 +13,12 @@ macro_rules! handle_response {
         match $result {
             Ok(data) => HttpResponse::Ok().json(data),
             Err(error) => {
-                use crate::utils::response_handler::ErrorToHttp;
+                use crate::models::errors::ErrorToHttp;
                 error.to_http_response()
             }
         }
     }};
+    // Truyền cả Result<T, Error> và status code vào macro này
     ($result:expr, $success_status:expr) => {{
         use actix_web::{HttpResponse, http::StatusCode};
 
@@ -72,14 +28,43 @@ macro_rules! handle_response {
                 _ => HttpResponse::Ok().json(data),
             },
             Err(error) => {
-                use crate::utils::response_handler::ErrorToHttp;
+                use crate::models::errors::ErrorToHttp;
                 error.to_http_response()
             }
         }
     }};
 }
 
-#[allow(unused)]
-pub fn handle_error(error: Error) -> HttpResponse {
-    error.to_http_response()
+#[derive(Debug, Serialize, Display)]
+#[display("Validation failed: {message}")]
+struct ValidateErrorResponse {
+    message: String,
+    status_code: u16,
+    errors: Vec<String>,
+}
+
+impl ResponseError for ValidateErrorResponse {
+    fn status_code(&self) -> http::StatusCode {
+        http::StatusCode::BAD_REQUEST
+    }
+
+    fn error_response(&self) -> HttpResponse<body::BoxBody> {
+        HttpResponse::build(self.status_code()).json(json!(self))
+    }
+}
+
+pub fn validator_error_handler(e: ::validator::ValidationErrors, _: &HttpRequest) -> Error {
+    let mut errors = Vec::new();
+    for (_, field_errors) in e.field_errors() {
+        for error in field_errors {
+            let error_msg = error.message.as_ref().unwrap_or(&error.code);
+            errors.push(error_msg.to_string());
+        }
+    }
+    ValidateErrorResponse {
+        message: "Bad Request".to_string(),
+        status_code: 400 as u16,
+        errors,
+    }
+    .into()
 }

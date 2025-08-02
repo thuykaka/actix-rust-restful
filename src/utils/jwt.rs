@@ -54,7 +54,8 @@ impl JwtClaims {
     pub fn generate_token(&self) -> Result<String, Error> {
         let header = Header::default();
         let encoding_key = EncodingKey::from_secret(config::JWT_SECRET.to_string().as_ref());
-        encode(&header, self, &encoding_key).map_err(|_| Error::FailedToGenerateToken)
+        encode(&header, self, &encoding_key)
+            .map_err(|_| Error::InternalServerError("Failed to generate token".to_string()))
     }
 }
 
@@ -62,6 +63,6 @@ pub fn verify_token(token: &str) -> Result<JwtClaims, Error> {
     let decoding_key = DecodingKey::from_secret(config::JWT_SECRET.to_string().as_ref());
     let validation = Validation::default();
     let token_data = decode::<JwtClaims>(token, &decoding_key, &validation)
-        .map_err(|_| Error::FailedToVerifyToken)?;
+        .map_err(|_| Error::InternalServerError("Failed to verify token".to_string()))?;
     Ok(token_data.claims)
 }
