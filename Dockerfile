@@ -58,9 +58,9 @@ COPY --from=builder /etc/group /etc/group
 WORKDIR /app
 
 # Copy our build
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/to_do-axtix ./
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/actix_rust_restful ./
 
 # Use an unprivileged user.
 USER nonroot:nonroot
 
-CMD ["/app/to_do-axtix"]
+CMD ["/app/actix_rust_restful"]
