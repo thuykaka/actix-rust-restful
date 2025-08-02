@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 # Web framework cho Rust - tạo HTTP server và API endpoints
 actix-web = "4.11.0"
+actix-cors = "0.7.1"
 
 # Logging utilities
 env_logger = "0.11.8"  # Logger implementation cho env_logger
