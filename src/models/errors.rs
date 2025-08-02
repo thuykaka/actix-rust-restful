@@ -1,49 +1,69 @@
+use actix_web::{HttpResponse, ResponseError};
+use serde_json::json;
+
 #[derive(thiserror::Error, Debug)]
-#[error("...")]
-#[allow(dead_code)]
 pub enum Error {
+    // Dùng cho lỗi DB
     #[error("sea_orm::DbErr: {0}")]
     Db(#[from] sea_orm::DbErr),
 
-    #[error("ENV VARIABLE for `{0}` is not set")]
-    EnvironmentVariableNotSet(String),
-
-    #[error("Resource Not Found: {0}")]
-    NotFound(String),
-
+    // Dùng cho lỗi khi start server, phải có nó thì mới dùng await? được
     #[error("{0}")]
     ServerStartFailed(#[from] std::io::Error),
-
-    #[error("InvalidId: ID {0} is not valid")]
-    InvalidId(String),
-
-    #[error("Email already exists")]
-    EmailAlreadyExists,
-
-    #[error("Invalid email format")]
-    InvalidEmail,
-
-    #[error("Password too short")]
-    PasswordTooShort,
-
-    #[error("Invalid credentials")]
-    InvalidCredentials,
 
     #[error("Unauthorized")]
     Unauthorized,
 
-    #[error("Forbidden")]
-    Forbidden,
+    #[error("{0}")]
+    UnauthorizedWithMessage(String),
 
-    #[error("Failed to generate authentication token")]
-    FailedToGenerateToken,
+    #[error("Bad Request: {0}")]
+    BadRequest(String),
 
-    #[error("Failed to verify authentication token")]
-    FailedToVerifyToken,
+    #[error("Internal Server Error: {0}")]
+    InternalServerError(String),
+}
 
-    #[error("Wrong email or password")]
-    WrongEmailOrPassword,
+// Dùng cho auth_mw
+impl ResponseError for Error {
+    fn error_response(&self) -> HttpResponse {
+        self.to_http_response()
+    }
+}
 
-    #[error("User not found")]
-    UserNotFound,
+#[allow(unused_imports)]
+pub trait ErrorToHttp {
+    fn to_http_response(&self) -> HttpResponse;
+}
+
+impl ErrorToHttp for Error {
+    fn to_http_response(&self) -> HttpResponse {
+        match self {
+            Error::Unauthorized => HttpResponse::Unauthorized().json(json!({
+                "status_code": 401,
+                "message": "Unauthorized",
+                "errors": []
+            })),
+
+            Error::UnauthorizedWithMessage(message) => HttpResponse::Unauthorized().json(json!({
+                "status_code": 401,
+                "message": message,
+                "errors": []
+            })),
+
+            Error::BadRequest(message) => HttpResponse::BadRequest().json(json!({
+                "status_code": 400,
+                "message": message,
+                "errors": []
+            })),
+            _ => {
+                log::error!("Internal server error: {:?}", self);
+                HttpResponse::InternalServerError().json(json!({
+                    "status_code": 500,
+                    "message": "Internal server error",
+                    "errors": []
+                }))
+            } // 5xx Server Errors
+        }
+    }
 }

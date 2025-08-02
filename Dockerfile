@@ -1,38 +1,66 @@
-# NB: This is not a production-grade Dockerfile.
+# based on
+# https://kerkour.com/rust-small-docker-image
 
-#################
-## build stage ##
-#################
-FROM rust:1-slim-bookworm AS builder
-WORKDIR /code
+####################################################################################################
+## Cargo Chef
+####################################################################################################
+FROM rust:latest AS chef
 
-# Download crates-io index and fetch dependency code.
-# This step avoids needing to spend time on every build downloading the index
-# which can take a long time within the docker context. Docker will cache it.
-RUN USER=root cargo init
-COPY Cargo.toml Cargo.toml
-RUN cargo fetch
+RUN cargo install cargo-chef 
 
-# copy app files
-COPY src src
-
-# compile app
-RUN cargo build --release
-
-###############
-## run stage ##
-###############
-FROM bitnami/minideb:bookworm
 WORKDIR /app
 
-# copy server binary from build stage
-COPY --from=builder /code/target/release/docker_sample docker_sample
+FROM chef AS planner
 
-# set user to non-root unless root is required for your app
-USER 1001
+COPY . .
 
-# indicate what port the server is running on
-EXPOSE 8080
+RUN cargo chef prepare  --recipe-path recipe.json
 
-# run server
-CMD [ "/app/docker_sample" ]
+####################################################################################################
+## Builder
+####################################################################################################
+FROM chef AS builder
+
+RUN rustup target add x86_64-unknown-linux-musl
+RUN apt update && apt install -y musl-tools musl-dev
+RUN update-ca-certificates
+
+# Create appuser
+ENV USER=nonroot
+ENV UID=10001
+
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    "${USER}"
+
+COPY --from=planner /app/recipe.json recipe.json
+# Build dependencies - this is the caching Docker layer!
+RUN cargo chef cook --release --recipe-path recipe.json
+
+COPY . .
+
+RUN cargo build --target x86_64-unknown-linux-musl --release
+
+####################################################################################################
+## Final image
+####################################################################################################
+FROM scratch AS runtime
+
+# Import from builder.
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+WORKDIR /app
+
+# Copy our build
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/to_do-axtix ./
+
+# Use an unprivileged user.
+USER nonroot:nonroot
+
+CMD ["/app/to_do-axtix"]

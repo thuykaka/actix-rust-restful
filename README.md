@@ -40,9 +40,10 @@ $ docker run --rm --network host -v "%cd%\wrk-test\auth-me.lua:/auth-me.lua" wil
 
 ## 5. Todo
 
+- [✔️] ~~SeaOrm: https://github.com/SeaQL/sea-query#table-create + https://www.sea-ql.org/~~
+- [✔️] ~~Validation: https://github.com/ranger-ross/actix-web-validation + https://github.com/Keats/validator~~
 - Using http request
 - Using redis
-- Validation
 - Queue
 - Upload file
 - CORS

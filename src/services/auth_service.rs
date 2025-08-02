@@ -50,7 +50,9 @@ impl AuthService {
 
         if user.is_none() {
             log::warn!("User not found with email: {}", body.email);
-            return Err(Error::WrongEmailOrPassword);
+            return Err(Error::UnauthorizedWithMessage(
+                "Wrong email or password".to_string(),
+            ));
         }
 
         let user = user.unwrap();
@@ -59,7 +61,9 @@ impl AuthService {
 
         if !is_password_valid {
             log::warn!("Invalid password for user: {}", body.email);
-            return Err(Error::WrongEmailOrPassword);
+            return Err(Error::UnauthorizedWithMessage(
+                "Wrong email or password".to_string(),
+            ));
         }
 
         log::info!("authenticate took {}ms", start_time.elapsed().as_millis());
@@ -106,7 +110,7 @@ impl AuthService {
 
         if email_exists {
             log::warn!("email already exists: {} -> return", body.email);
-            return Err(Error::EmailAlreadyExists);
+            return Err(Error::BadRequest("Email already exists".to_string()));
         }
         log::info!(
             "check_email_exists took {}ms",
