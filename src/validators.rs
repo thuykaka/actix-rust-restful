@@ -26,7 +26,7 @@ pub fn validate_password(password: &str) -> Result<(), ValidationError> {
         Ok(())
     } else {
         Err(ValidationError::new(
-            "Password must contain at least one upper case, lower case, number, special character, and must be at least 8 characters long. Dont use spaces.",
+            "Password must contain at least one upper case, lower case, number, special character, and must be at least 8 characters long. Don't use spaces.",
         ))
     }
 }

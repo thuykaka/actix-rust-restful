@@ -1,5 +1,4 @@
-use std::time::Instant;
-
+use crate::repositories::user_repository::UserRepository;
 use crate::{
     models::{
         errors::Error,
@@ -11,31 +10,43 @@ use crate::{
         jwt::JwtClaims,
     },
 };
+use chrono::Utc;
 use entity::t_users;
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
-use sea_orm::{DatabaseConnection, IntoActiveModel};
+use sea_orm::{ActiveValue::Set, IntoActiveModel};
+use std::time::Instant;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct AuthService {
-    pub db: DatabaseConnection,
+    pub user_repository: UserRepository,
 }
 
 impl AuthService {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(user_repository: UserRepository) -> Self {
+        Self { user_repository }
     }
 
-    pub async fn me(&self, id: String) -> Result<MeResponse, Error> {
+    fn create_jwt_token(&self, user: t_users::Model) -> Result<String, Error> {
+        let jwt_token = JwtClaims::new(user.id, user.email, user.name);
+
+        let token = jwt_token.generate_token()?;
+
+        Ok(token)
+    }
+
+    pub async fn me(&self, user_id: Uuid) -> Result<MeResponse, Error> {
         let start_time = Instant::now();
 
-        let user_id = id.parse::<i32>().map_err(|_| Error::Unauthorized)?;
-
-        let user = t_users::Entity::find_by_id(user_id)
-            .one(&self.db)
+        let user = self
+            .user_repository
+            .get_user_by_id(user_id)
             .await?
             .ok_or_else(|| Error::Unauthorized)?;
 
-        log::info!("me query took {}ms", start_time.elapsed().as_millis());
+        log::info!(
+            "auth_service -> me query took {}ms",
+            start_time.elapsed().as_millis()
+        );
 
         Ok(MeResponse(user.into()))
     }
@@ -43,24 +54,19 @@ impl AuthService {
     pub async fn authenticate(&self, body: SignInRequest) -> Result<SignInResponse, Error> {
         let start_time = Instant::now();
 
-        let user = t_users::Entity::find()
-            .filter(t_users::Column::Email.eq(body.email.to_lowercase()))
-            .one(&self.db)
-            .await?;
-
-        if user.is_none() {
-            log::warn!("User not found with email: {}", body.email);
-            return Err(Error::UnauthorizedWithMessage(
-                "Wrong email or password".to_string(),
-            ));
-        }
-
-        let user = user.unwrap();
+        let user = self
+            .user_repository
+            .get_user_by_email(&body.email)
+            .await?
+            .ok_or_else(|| {
+                log::warn!("authenticate -> user not found with email: {}", body.email);
+                Error::UnauthorizedWithMessage("Wrong email or password".to_string())
+            })?;
 
         let is_password_valid = verify_password(&body.password, &user.password);
 
         if !is_password_valid {
-            log::warn!("Invalid password for user: {}", body.email);
+            log::warn!("authenticate -> invalid password for user: {}", body.email);
             return Err(Error::UnauthorizedWithMessage(
                 "Wrong email or password".to_string(),
             ));
@@ -68,13 +74,7 @@ impl AuthService {
 
         log::info!("authenticate took {}ms", start_time.elapsed().as_millis());
 
-        let jwt_token = JwtClaims::new(
-            user.id.to_string(),
-            user.email.to_string(),
-            user.name.to_string(),
-        );
-
-        let token = jwt_token.generate_token()?;
+        let token = self.create_jwt_token(user.clone())?;
 
         Ok(SignInResponse {
             token,
@@ -84,13 +84,12 @@ impl AuthService {
 
     pub async fn update(
         &self,
-        id: String,
+        user_id: Uuid,
         body: UpdateUserRequest,
     ) -> Result<UpdateUserResponse, Error> {
-        let user_id = id.parse::<i32>().map_err(|_| Error::Unauthorized)?;
-
-        let mut user = t_users::Entity::find_by_id(user_id)
-            .one(&self.db)
+        let mut user = self
+            .user_repository
+            .get_user_by_id(user_id)
             .await?
             .ok_or_else(|| Error::Unauthorized)?
             .into_active_model();
@@ -98,17 +97,22 @@ impl AuthService {
         if let Some(name) = body.name {
             user.name = Set(name);
         }
-        user.password = Set(hash_password(&body.password));
-        let updated_user = user.update(&self.db).await?;
+
+        if let Some(password) = body.password {
+            user.password = Set(hash_password(&password));
+        }
+
+        user.updated_at = Set(Utc::now().into());
+        let updated_user = self.user_repository.update_user(user).await?;
 
         Ok(UpdateUserResponse(updated_user.into()))
     }
 
     pub async fn sign_up(&self, body: SignUpRequest) -> Result<SignUpResponse, Error> {
         let start_time = Instant::now();
-        let email_exists = self.check_email_exists(&body.email).await?;
+        let exists_user_with_email = self.user_repository.get_user_by_email(&body.email).await?;
 
-        if email_exists {
+        if exists_user_with_email.is_some() {
             log::warn!("email already exists: {} -> return", body.email);
             return Err(Error::BadRequest("Email already exists".to_string()));
         }
@@ -118,45 +122,18 @@ impl AuthService {
         );
 
         let start_time = Instant::now();
-        let user = self.create_user(body).await?;
+
+        let user_model = body.into_active_model();
+
+        let user = self.user_repository.create_user(user_model).await?;
 
         log::info!("create_user took {}ms", start_time.elapsed().as_millis());
 
-        let jwt_token = JwtClaims::new(
-            user.id.to_string(),
-            user.email.to_string(),
-            user.name.to_string(),
-        );
-
-        let token = jwt_token.generate_token()?;
+        let token = self.create_jwt_token(user.clone())?;
 
         Ok(SignUpResponse {
             token,
             user: user.into(),
         })
-    }
-
-    async fn check_email_exists(&self, email: &str) -> Result<bool, Error> {
-        let user = t_users::Entity::find()
-            .filter(t_users::Column::Email.eq(email))
-            .one(&self.db)
-            .await?;
-
-        Ok(user.is_some())
-    }
-
-    async fn create_user(&self, body: SignUpRequest) -> Result<t_users::Model, Error> {
-        let hashed_password = hash_password(&body.password);
-
-        let user_model = t_users::ActiveModel {
-            name: Set(body.name),
-            email: Set(body.email.to_lowercase()),
-            password: Set(hashed_password),
-            ..Default::default()
-        };
-
-        let user = user_model.insert(&self.db).await?;
-
-        Ok(user)
     }
 }

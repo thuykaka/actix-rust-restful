@@ -1,5 +1,5 @@
+pub mod common;
 pub mod hash;
 pub mod jwt;
-pub mod common;
+pub mod request_handler;
 pub mod response_handler;
-pub mod validator;

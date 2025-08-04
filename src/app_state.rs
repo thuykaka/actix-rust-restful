@@ -1,4 +1,7 @@
-use crate::{config, models::errors::Error, services::auth_service::AuthService};
+use crate::{
+    config, models::errors::Error, repositories::user_repository::UserRepository,
+    services::auth_service::AuthService,
+};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use std::time::Duration;
 
@@ -24,7 +27,9 @@ impl AppState {
 
         log::info!("Connected to PorstgreSQL");
 
-        let auth_service = AuthService::new(db_connection);
+        let user_repository = UserRepository::new(db_connection);
+
+        let auth_service = AuthService::new(user_repository);
 
         Ok(AppState { auth_service })
     }

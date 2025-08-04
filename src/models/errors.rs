@@ -1,4 +1,4 @@
-use actix_web::{HttpResponse, ResponseError};
+use actix_web::{HttpResponse, ResponseError, error::JsonPayloadError};
 use serde_json::json;
 
 #[derive(thiserror::Error, Debug)]
