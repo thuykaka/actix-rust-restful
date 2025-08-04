@@ -78,10 +78,14 @@ $ sea-orm-cli generate entity -o entity/src
 - [✔️] ~~Ratelimit: https://github.com/bigyao25/actix-web-ratelimit~~
 - Swagger
 - Global error handler
+  - [✔️] ~~JSON payload~~
+  - Form
+  - Query,
+  - Path
 - mqtt with emqx
 - websocket
-- datetime db
--
+- [✔️] ~~datetime db: using chrono~~
+- [✔️] ~~refresh token~~
 
 ## 6. Refers
 

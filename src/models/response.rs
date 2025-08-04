@@ -4,13 +4,17 @@ use crate::models::db::User;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SignUpResponse {
-    pub token: String,
+    #[serde(rename = "accessToken")]
+    pub access_token: String,
     pub user: User,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SignInResponse {
-    pub token: String,
+    #[serde(rename = "accessToken")]
+    pub access_token: String,
+    #[serde(rename = "refreshToken")]
+    pub refresh_token: String,
     pub user: User,
 }
 
@@ -19,3 +23,11 @@ pub struct MeResponse(pub User);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UpdateUserResponse(pub User);
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RefreshTokenResponse {
+    #[serde(rename = "accessToken")]
+    pub access_token: String,
+    #[serde(rename = "refreshToken")]
+    pub refresh_token: String,
+}

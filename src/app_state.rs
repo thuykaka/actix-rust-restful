@@ -1,5 +1,9 @@
 use crate::{
-    config, models::errors::Error, repositories::user_repository::UserRepository,
+    config,
+    models::errors::Error,
+    repositories::{
+        refresh_token_repository::RefreshTokenRepository, user_repository::UserRepository,
+    },
     services::auth_service::AuthService,
 };
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
@@ -27,9 +31,10 @@ impl AppState {
 
         log::info!("Connected to PorstgreSQL");
 
-        let user_repository = UserRepository::new(db_connection);
+        let user_repository = UserRepository::new(db_connection.clone());
+        let refresh_token_repository = RefreshTokenRepository::new(db_connection.clone());
 
-        let auth_service = AuthService::new(user_repository);
+        let auth_service = AuthService::new(user_repository, refresh_token_repository);
 
         Ok(AppState { auth_service })
     }

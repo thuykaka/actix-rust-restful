@@ -10,7 +10,6 @@ fn get_current_time() -> DateTime<Utc> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(from = "t_users::Model")]
 pub struct User {
     pub id: Uuid,
     pub name: String,
@@ -31,8 +30,8 @@ pub struct User {
 
 // Cho phép gọi .into() trên t_users::Model để convert sang User
 impl From<t_users::Model> for User {
-    fn from(user: t_users::Model) -> Self {
-        Self {
+    fn from(user: t_users::Model) -> User {
+        User {
             id: user.id,
             name: user.name,
             email: user.email,
