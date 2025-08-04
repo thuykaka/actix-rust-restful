@@ -4,10 +4,11 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use std::future::{Ready, ready};
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JwtClaims {
-    pub sub: String,   // Subject (user ID)
+    pub sub: Uuid,     // Subject (user ID)
     pub email: String, // User email
     pub name: String,  // User name
     pub exp: i64,      // Expiration time
@@ -39,7 +40,7 @@ impl FromRequest for AuthenticatedUser {
 }
 
 impl JwtClaims {
-    pub fn new(sub: String, email: String, name: String) -> Self {
+    pub fn new(sub: Uuid, email: String, name: String) -> Self {
         let now = Utc::now();
         let exp = now + Duration::hours(24);
 

@@ -17,7 +17,12 @@ pub fn hash_password(password: &str) -> String {
 
 pub fn verify_password(password: &str, hash: &str) -> bool {
     let argon2 = Argon2::default();
-    let parsed_hash = PasswordHash::new(&hash).unwrap();
+    let parsed_hash = if let Ok(h) = PasswordHash::new(hash) {
+        h
+    } else {
+        log::error!("verify_password -> failed to parse hash: {}", hash);
+        return false;
+    };
     argon2
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok()

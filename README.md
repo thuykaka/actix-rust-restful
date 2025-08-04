@@ -38,6 +38,34 @@ $ docker run --rm --network host -v "%cd%\wrk-test\auth-me.lua:/auth-me.lua" wil
 
   However, Model is for read operations only. To perform insert, update, or delete, you need to use ActiveModel which attaches meta-data on each attribute.
 
+- CLI uses:
+
+```sh
+# E.g. to generate `migration/src/m20220101_000001_create_user_table.rs` shown below
+$ sea-orm-cli migrate generate create_user_table
+
+# Run migration
+$ sea-orm-cli migrate up
+
+# Rollback last applied migration
+$ sea-orm-cli migrate down
+
+# Drop all tables from the database, then reapply all migrations
+$ sea-orm-cli migrate fresh
+
+# Rollback all applied migrations, then reapply all migrations
+$ sea-orm-cli migrate refresh
+
+# Rollback all applied migrations
+$ sea-orm-cli migrate reset
+
+# Create entity (discover all tables in a database and generate a corresponding SeaORM entity file for each table)
+
+$ sea-orm-cli generate entity -o entity/src
+# or $ sea-orm-cli generate entity -u protocol://username:password@localhost/bakery -o entity/src
+
+```
+
 ## 5. Todo
 
 - [✔️] ~~SeaOrm: https://github.com/SeaQL/sea-query#table-create + https://www.sea-ql.org/~~
@@ -52,13 +80,15 @@ $ docker run --rm --network host -v "%cd%\wrk-test\auth-me.lua:/auth-me.lua" wil
 - Global error handler
 - mqtt with emqx
 - websocket
+- datetime db
+-
 
 ## 6. Refers
 
 - https://www.youtube.com/watch?v=aZmrfizffL0&list=PLGOIZXklfFkRh8jHNY8070KUl86Tj3Ztf
 - https://dev.to/chaudharypraveen98/form-validation-in-rust-404l
-- https://github/trasherr/Blogging-API-Actix-Web
-- https://github/dheshanm/ToDo-Sea-ORM
+- https://github.com/trasherr/Blogging-API-Actix-Web
+- https://github.com/dheshanm/ToDo-Sea-ORM
 - https://github.com/SeaQL/sea-query
 - https://github.com/actix/examples
 - https://actix.rs/docs
