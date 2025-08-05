@@ -169,8 +169,11 @@ impl AuthService {
         let user_converted: User = user.into();
         let access_token = self.create_jwt_token(user_converted.clone())?;
 
+        let refresh_token = self.create_refresh_token(user_converted.clone()).await?;
+
         Ok(SignUpResponse {
             access_token,
+            refresh_token,
             user: user_converted,
         })
     }

@@ -6,6 +6,8 @@ use crate::models::db::User;
 pub struct SignUpResponse {
     #[serde(rename = "accessToken")]
     pub access_token: String,
+    #[serde(rename = "refreshToken")]
+    pub refresh_token: String,
     pub user: User,
 }
 
