@@ -49,3 +49,11 @@ derive_more = "2.0.1"  # Additional derive macros (Display, etc.)
 # Text processing
 regex = "1.11.1"  # Regular expressions
 
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }  # HTTP client library
+
+# Error handling and logging
+anyhow = "1.0"     # Error handling utilities
+tracing = "0.1"    # Application-level tracing
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }  # Tracing subscriber
+

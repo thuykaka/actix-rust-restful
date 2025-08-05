@@ -2,15 +2,17 @@ use crate::{
     config,
     models::errors::Error,
     repositories::{
-        refresh_token_repository::RefreshTokenRepository, user_repository::UserRepository,
+        refresh_token_repository::RefreshTokenRepository, todo_repository::TodoRepository,
+        user_repository::UserRepository,
     },
-    services::auth_service::AuthService,
+    services::{auth_service::AuthService, todo_service::TodoService},
 };
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use std::time::Duration;
 
 pub struct AppState {
     pub auth_service: AuthService,
+    pub todo_service: TodoService,
 }
 
 impl AppState {
@@ -33,9 +35,14 @@ impl AppState {
 
         let user_repository = UserRepository::new(db_connection.clone());
         let refresh_token_repository = RefreshTokenRepository::new(db_connection.clone());
+        let todo_repository = TodoRepository::new(db_connection.clone());
 
         let auth_service = AuthService::new(user_repository, refresh_token_repository);
+        let todo_service = TodoService::new(todo_repository);
 
-        Ok(AppState { auth_service })
+        Ok(AppState {
+            auth_service,
+            todo_service,
+        })
     }
 }

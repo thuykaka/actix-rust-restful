@@ -16,7 +16,7 @@ use actix_web::{
 };
 use actix_web_validation::validator::ValidatorErrorHandlerExt;
 use app_state::AppState;
-use controllers::{auth_controller, home_controller, not_found_controller};
+use controllers::{auth_controller, home_controller, not_found_controller, todo_controller};
 use dotenv::dotenv;
 use env_logger::Env;
 use middlewares::rate_limit_middleware::rate_limiter_middleware;
@@ -48,6 +48,7 @@ async fn main() -> Result<(), Error> {
             .app_data(app_data.clone())
             .configure(home_controller::config)
             .configure(auth_controller::config)
+            .configure(todo_controller::config)
             .default_service(web::route().to(not_found_controller::not_found_handler))
     })
     .workers(2)

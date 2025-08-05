@@ -55,3 +55,53 @@ pub struct RefreshTokenRequest {
     #[validate(length(min = 1, message = "Refresh token is required"))]
     pub refresh_token: String,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, Validate)]
+pub struct GetAllTodosRequest {
+    #[validate(range(min = 0, message = "Page must be greater than or equal to 0"))]
+    pub page: Option<u64>,
+
+    #[validate(range(min = 1, message = "Page size must be greater than 0"))]
+    #[serde(rename = "pageSize")]
+    pub page_size: Option<u64>,
+
+    #[validate(length(min = 3, message = "Search must be at least 3 characters long"))]
+    pub search: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Validate)]
+pub struct CreateTodoRequest {
+    #[validate(length(min = 3, message = "Title must be at least 3 characters long"))]
+    pub title: String,
+
+    #[validate(length(min = 3, message = "Description must be at least 3 characters long"))]
+    pub description: String,
+
+    pub completed: Option<bool>,
+}
+
+impl CreateTodoRequest {
+    pub fn into_active_model(self, user_id: Uuid) -> t_todos::ActiveModel {
+        t_todos::ActiveModel {
+            id: Set(Uuid::new_v4()),
+            title: Set(self.title),
+            description: Set(self.description),
+            completed: Set(self.completed.unwrap_or(false)),
+            created_at: Set(Utc::now().into()),
+            updated_at: Set(Utc::now().into()),
+            user_id: Set(user_id),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Validate)]
+pub struct UpdateTodoRequest {
+    #[validate(length(min = 3, message = "Title must be at least 3 characters long"))]
+    pub title: Option<String>,
+
+    #[validate(length(min = 3, message = "Description must be at least 3 characters long"))]
+    pub description: Option<String>,
+
+    pub completed: Option<bool>,
+}
