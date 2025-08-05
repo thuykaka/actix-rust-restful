@@ -12,6 +12,7 @@ actix-web-ratelimit = "0.1.1"
 # Logging utilities
 env_logger = "0.11.8"  # Logger implementation cho env_logger
 log = "0.4.27"         # Logging facade cho Rust
+tracing = "0.1.41"     # Application-level tracing
 
 # Serialization/Deserialization
 serde = { version = "1.0", features = ["derive"] }  # Serialization framework
@@ -19,11 +20,12 @@ serde_json = "1.0"                                   # JSON serialization/deseri
 
 # Async runtime và utilities
 futures = "0.3"  # Async programming utilities
-tokio = "1.47.0" # Async runtime cho Rust
+tokio = { version = "1.47.0", features = ["full", "test-util"] } # Async runtime cho Rust
 
 # Utilities
 uuid = { version = "1.17.0", features = ["v4"] }  # UUID generation
 dotenv = "0.15.0"                                  # Load environment variables từ .env file
+urlencoding = "1.1.1"                              # URL encoding/decoding utilities
 
 # Memory và time management
 once_cell = "1.21.3"  # Lazy initialization cho static variables, chỉ tải khi lần đầu sử dụng, tránh tải ngay khi khởi động tốn tài nguyên dùng cho config, db connection, cache computation, thread-safe
@@ -40,6 +42,7 @@ jsonwebtoken = "9.3.0" # JWT token generation và validation
 
 # Error handling
 thiserror = "1.0"  # Derive macro cho custom error types
+anyhow = "1.0.98"
 
 # Validation
 actix-web-validation = {version = "0.8.0", features = ["validator"] }  # Integration giữa actix-web và validator
@@ -49,11 +52,6 @@ derive_more = "2.0.1"  # Additional derive macros (Display, etc.)
 # Text processing
 regex = "1.11.1"  # Regular expressions
 
-# HTTP client
-reqwest = { version = "0.12", features = ["json"] }  # HTTP client library
-
-# Error handling and logging
-anyhow = "1.0"     # Error handling utilities
-tracing = "0.1"    # Application-level tracing
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }  # Tracing subscriber
+# HTTP client library
+reqwest = { version = "0.12.22", features = ["json"] }
 

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     config,
     models::errors::Error,
@@ -8,7 +10,6 @@ use crate::{
     services::{auth_service::AuthService, todo_service::TodoService},
 };
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
-use std::time::Duration;
 
 pub struct AppState {
     pub auth_service: AuthService,
@@ -16,11 +17,31 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn init_db_and_services() -> Result<Self, Error> {
-        log::info!("Connecting to PorstgreSQL...");
+    pub async fn new() -> Result<Self, Error> {
+        log::info!("Initializing application state");
 
-        let mut options = ConnectOptions::new(config::DATABASE_URL.to_owned());
+        // Create database connection
+        let db_connection = Self::create_database_connection().await?;
 
+        // Create repositories
+        let (user_repo, refresh_repo, todo_repo) = Self::create_repositories(&db_connection);
+
+        // Create services
+        let (auth_service, todo_service) =
+            Self::create_services(user_repo, refresh_repo, todo_repo)?;
+
+        log::info!("Application state initialized successfully");
+
+        Ok(AppState {
+            auth_service,
+            todo_service,
+        })
+    }
+
+    async fn create_database_connection() -> Result<DatabaseConnection, Error> {
+        log::info!("Connecting to PostgreSQL...");
+
+        let mut options = ConnectOptions::new(config::DATABASE_URL.to_string());
         options
             .max_connections(*config::DB_MAX_CONNECTIONS)
             .connect_timeout(Duration::from_secs(30))
@@ -29,20 +50,30 @@ impl AppState {
             .sqlx_logging(false)
             .sqlx_logging_level(log::LevelFilter::Info);
 
-        let db_connection: DatabaseConnection = Database::connect(options).await?;
+        let db_connection = Database::connect(options).await?;
 
-        log::info!("Connected to PorstgreSQL");
+        log::info!("Connected to PostgreSQL successfully");
+        Ok(db_connection)
+    }
 
+    fn create_repositories(
+        db_connection: &DatabaseConnection,
+    ) -> (UserRepository, RefreshTokenRepository, TodoRepository) {
         let user_repository = UserRepository::new(db_connection.clone());
         let refresh_token_repository = RefreshTokenRepository::new(db_connection.clone());
         let todo_repository = TodoRepository::new(db_connection.clone());
 
-        let auth_service = AuthService::new(user_repository, refresh_token_repository);
-        let todo_service = TodoService::new(todo_repository);
+        (user_repository, refresh_token_repository, todo_repository)
+    }
 
-        Ok(AppState {
-            auth_service,
-            todo_service,
-        })
+    fn create_services(
+        user_repo: UserRepository,
+        refresh_repo: RefreshTokenRepository,
+        todo_repo: TodoRepository,
+    ) -> Result<(AuthService, TodoService), Error> {
+        let auth_service = AuthService::new(user_repo, refresh_repo);
+        let todo_service = TodoService::new(todo_repo)?;
+
+        Ok((auth_service, todo_service))
     }
 }

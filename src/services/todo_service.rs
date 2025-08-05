@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use crate::{
     config,
     models::{
@@ -8,20 +6,44 @@ use crate::{
         response::{CommonResponse, GetAllTodosResponse},
     },
     repositories::todo_repository::TodoRepository,
+    services::http_request_service::{HttpRequestError, HttpRequestService},
 };
 use chrono::Utc;
 use entity::t_todos;
 use sea_orm::{ActiveValue::Set, IntoActiveModel};
+use serde::{Deserialize, Serialize};
+use std::time::Instant;
 use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct TodoService {
     pub todo_repository: TodoRepository,
+    pub http_request_service: HttpRequestService,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ExternalTodo {
+    id: u32,
+    todo: String,
+    completed: bool,
+    #[serde(rename = "userId")]
+    user_id: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ExternalTodosResponse {
+    todos: Vec<ExternalTodo>,
+    total: u32,
+    skip: u32,
+    limit: u32,
 }
 
 impl TodoService {
-    pub fn new(todo_repository: TodoRepository) -> Self {
-        Self { todo_repository }
+    pub fn new(todo_repository: TodoRepository) -> Result<Self, HttpRequestError> {
+        Ok(Self {
+            todo_repository,
+            http_request_service: HttpRequestService::new()?,
+        })
     }
 
     #[tracing::instrument(skip(self))]
@@ -122,5 +144,15 @@ impl TodoService {
         let updated_todo = self.todo_repository.update(todo_active_model).await?;
 
         Ok(updated_todo)
+    }
+
+    // Test call external API
+    pub async fn get_external_data(&self) -> Result<ExternalTodosResponse, Error> {
+        let resp = self
+            .http_request_service
+            .get::<ExternalTodosResponse>("https://dummyjson.com/todos")
+            .await?;
+
+        Ok(resp)
     }
 }

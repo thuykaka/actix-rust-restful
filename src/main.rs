@@ -31,7 +31,7 @@ async fn main() -> Result<(), Error> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     // Init database connection and services
-    let app_state = AppState::init_db_and_services().await?;
+    let app_state = AppState::new().await?;
 
     // App data
     let app_data = web::Data::new(app_state);
