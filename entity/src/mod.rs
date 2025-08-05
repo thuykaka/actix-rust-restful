@@ -2,4 +2,5 @@
 
 pub mod prelude;
 
+pub mod t_refresh_token;
 pub mod t_users;

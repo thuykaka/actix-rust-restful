@@ -37,3 +37,17 @@ pub static RATE_LIMIT_WINDOW_SECS: Lazy<u64> = Lazy::new(|| {
         .parse()
         .expect("RATE_LIMIT_WINDOW_SECS must be a valid number")
 });
+
+pub static REFRESH_TOKEN_EXPIRATION_HOURS: Lazy<i64> = Lazy::new(|| {
+    env::var("REFRESH_TOKEN_EXPIRATION_HOURS")
+        .unwrap_or_else(|_| "24".to_string())
+        .parse()
+        .expect("REFRESH_TOKEN_EXPIRATION_HOURS must be a valid number")
+});
+
+pub static ACCESS_TOKEN_EXPIRATION_HOURS: Lazy<i64> = Lazy::new(|| {
+    env::var("ACCESS_TOKEN_EXPIRATION_HOURS")
+        .unwrap_or_else(|_| "1".to_string())
+        .parse()
+        .expect("ACCESS_TOKEN_EXPIRATION_HOURS must be a valid number")
+});

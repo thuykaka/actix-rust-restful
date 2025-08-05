@@ -1,17 +1,23 @@
-use crate::repositories::user_repository::UserRepository;
+use crate::config;
+use crate::models::db::User;
+use crate::repositories::{
+    refresh_token_repository::RefreshTokenRepository, user_repository::UserRepository,
+};
 use crate::{
     models::{
         errors::Error,
         request::{SignInRequest, SignUpRequest, UpdateUserRequest},
-        response::{MeResponse, SignInResponse, SignUpResponse, UpdateUserResponse},
+        response::{
+            MeResponse, RefreshTokenResponse, SignInResponse, SignUpResponse, UpdateUserResponse,
+        },
     },
     utils::{
         hash::{hash_password, verify_password},
         jwt::JwtClaims,
     },
 };
-use chrono::Utc;
-use entity::t_users;
+use chrono::{Duration, Utc};
+use entity::t_refresh_token;
 use sea_orm::{ActiveValue::Set, IntoActiveModel};
 use std::time::Instant;
 use uuid::Uuid;
@@ -19,19 +25,46 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct AuthService {
     pub user_repository: UserRepository,
+    pub refresh_token_repository: RefreshTokenRepository,
 }
 
 impl AuthService {
-    pub fn new(user_repository: UserRepository) -> Self {
-        Self { user_repository }
+    pub fn new(
+        user_repository: UserRepository,
+        refresh_token_repository: RefreshTokenRepository,
+    ) -> Self {
+        Self {
+            user_repository,
+            refresh_token_repository,
+        }
     }
 
-    fn create_jwt_token(&self, user: t_users::Model) -> Result<String, Error> {
+    fn create_jwt_token(&self, user: User) -> Result<String, Error> {
         let jwt_token = JwtClaims::new(user.id, user.email, user.name);
 
         let token = jwt_token.generate_token()?;
 
         Ok(token)
+    }
+
+    async fn create_refresh_token(&self, user: User) -> Result<String, Error> {
+        let token = Uuid::new_v4();
+        let refresh_token_model = t_refresh_token::ActiveModel {
+            user_id: Set(user.id),
+            token: Set(token),
+            expired_at: Set((Utc::now()
+                + Duration::hours(*config::REFRESH_TOKEN_EXPIRATION_HOURS))
+            .into()),
+            data: Set(Some(serde_json::to_value(&user)?)),
+            ..Default::default()
+        };
+
+        let refresh_token = self
+            .refresh_token_repository
+            .create_refresh_token(refresh_token_model)
+            .await?;
+
+        Ok(refresh_token.token.to_string())
     }
 
     pub async fn me(&self, user_id: Uuid) -> Result<MeResponse, Error> {
@@ -72,13 +105,17 @@ impl AuthService {
             ));
         }
 
+        let user_converted: User = user.into();
+        let access_token = self.create_jwt_token(user_converted.clone())?;
+
+        let refresh_token = self.create_refresh_token(user_converted.clone()).await?;
+
         log::info!("authenticate took {}ms", start_time.elapsed().as_millis());
 
-        let token = self.create_jwt_token(user.clone())?;
-
         Ok(SignInResponse {
-            token,
-            user: user.into(),
+            access_token,
+            refresh_token,
+            user: user_converted,
         })
     }
 
@@ -129,11 +166,41 @@ impl AuthService {
 
         log::info!("create_user took {}ms", start_time.elapsed().as_millis());
 
-        let token = self.create_jwt_token(user.clone())?;
+        let user_converted: User = user.into();
+        let access_token = self.create_jwt_token(user_converted.clone())?;
+
+        let refresh_token = self.create_refresh_token(user_converted.clone()).await?;
 
         Ok(SignUpResponse {
-            token,
-            user: user.into(),
+            access_token,
+            refresh_token,
+            user: user_converted,
+        })
+    }
+
+    pub async fn refresh_token(&self, refresh_token: Uuid) -> Result<RefreshTokenResponse, Error> {
+        let start_time = Instant::now();
+
+        let refresh_token_model = self
+            .refresh_token_repository
+            .get_refresh_token(refresh_token)
+            .await?
+            .ok_or_else(|| Error::BadRequest("Invalid refresh token".to_string()))?;
+
+        let refresh_token_data = refresh_token_model
+            .data
+            .ok_or_else(|| Error::BadRequest("Invalid refresh token".to_string()))?;
+
+        let user = serde_json::from_value::<User>(refresh_token_data)?;
+
+        let user_converted: User = user.into();
+        let access_token = self.create_jwt_token(user_converted)?;
+
+        log::info!("refresh_token took {}ms", start_time.elapsed().as_millis());
+
+        Ok(RefreshTokenResponse {
+            access_token,
+            refresh_token: refresh_token.to_string(),
         })
     }
 }

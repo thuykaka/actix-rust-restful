@@ -9,6 +9,7 @@ use actix_web::{
     web::{Data, Json, ServiceConfig, scope},
 };
 use actix_web_validation::Validated;
+use uuid::Uuid;
 
 #[post("/signup")]
 async fn sign_up(
@@ -50,13 +51,27 @@ async fn update(
     handle_response!(result)
 }
 
+#[post("/refresh-token")]
+async fn refresh_token(
+    app_state: Data<AppState>,
+    Validated(body): Validated<Json<request::RefreshTokenRequest>>,
+) -> impl Responder {
+    let body = body.into_inner();
+    let refresh_token = Uuid::parse_str(&body.refresh_token).unwrap_or_else(|_| Uuid::nil());
+    let result = app_state.auth_service.refresh_token(refresh_token).await;
+    handle_response!(result)
+}
 pub fn config(cfg: &mut ServiceConfig) {
     cfg.service(
-        scope("/auth").service(sign_up).service(sign_in).service(
-            scope("")
-                .wrap(from_fn(auth_middleware))
-                .service(me)
-                .service(update),
-        ),
+        scope("/auth")
+            .service(sign_up)
+            .service(sign_in)
+            .service(refresh_token)
+            .service(
+                scope("")
+                    .wrap(from_fn(auth_middleware))
+                    .service(me)
+                    .service(update),
+            ),
     );
 }

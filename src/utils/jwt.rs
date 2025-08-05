@@ -11,8 +11,8 @@ pub struct JwtClaims {
     pub sub: Uuid,     // Subject (user ID)
     pub email: String, // User email
     pub name: String,  // User name
-    pub exp: i64,      // Expiration time
-    pub iat: i64,      // Issued at
+    pub exp: usize,    // Expiration time
+    pub iat: usize,    // Issued at
 }
 
 #[derive(Debug, Clone)]
@@ -42,14 +42,14 @@ impl FromRequest for AuthenticatedUser {
 impl JwtClaims {
     pub fn new(sub: Uuid, email: String, name: String) -> Self {
         let now = Utc::now();
-        let exp = now + Duration::hours(24);
+        let exp = now + Duration::hours(*config::ACCESS_TOKEN_EXPIRATION_HOURS);
 
         JwtClaims {
             sub,
             email,
             name,
-            exp: exp.timestamp(),
-            iat: now.timestamp(),
+            exp: exp.timestamp() as usize,
+            iat: now.timestamp() as usize,
         }
     }
     pub fn generate_token(&self) -> Result<String, Error> {
@@ -62,8 +62,11 @@ impl JwtClaims {
 
 pub fn verify_token(token: &str) -> Result<JwtClaims, Error> {
     let decoding_key = DecodingKey::from_secret(config::JWT_SECRET.to_string().as_ref());
-    let validation = Validation::default();
-    let token_data = decode::<JwtClaims>(token, &decoding_key, &validation)
-        .map_err(|_| Error::InternalServerError("Failed to verify token".to_string()))?;
+    let mut validation = Validation::default();
+    validation.leeway = 0;
+    let token_data = decode::<JwtClaims>(token, &decoding_key, &validation).map_err(|e| {
+        log::error!("Failed to verify token: {:?}", e);
+        Error::InternalServerError("Failed to verify token".to_string())
+    })?;
     Ok(token_data.claims)
 }

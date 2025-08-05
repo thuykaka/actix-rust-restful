@@ -48,3 +48,10 @@ pub struct UpdateUserRequest {
     #[validate(custom(function = validate_password))]
     pub password: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct RefreshTokenRequest {
+    #[validate(length(min = 1, message = "Refresh token is required"))]
+    pub refresh_token: String,
+}

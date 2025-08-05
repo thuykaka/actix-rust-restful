@@ -1,4 +1,4 @@
-use actix_web::{HttpResponse, ResponseError, error::JsonPayloadError};
+use actix_web::{HttpResponse, ResponseError};
 use serde_json::json;
 
 #[derive(thiserror::Error, Debug)]
@@ -6,6 +6,9 @@ pub enum Error {
     // Dùng cho lỗi DB
     #[error("sea_orm::DbErr: {0}")]
     Db(#[from] sea_orm::DbErr),
+
+    #[error("serde_json::Error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 
     // Dùng cho lỗi khi start server, phải có nó thì mới dùng await? được
     #[error("{0}")]
