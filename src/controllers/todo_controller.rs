@@ -63,11 +63,18 @@ async fn update_todo(
     handle_response!(result)
 }
 
+#[get("/external")]
+async fn get_external_data(app_state: Data<AppState>) -> impl Responder {
+    let result = app_state.todo_service.get_external_data().await;
+    handle_response!(result)
+}
+
 pub fn config(cfg: &mut ServiceConfig) {
     cfg.service(
         scope("/todos")
             .wrap(from_fn(auth_middleware))
             .service(get_all_todos)
+            .service(get_external_data)
             .service(get_todo_by_id)
             .service(create_todo)
             .service(delete_todo)

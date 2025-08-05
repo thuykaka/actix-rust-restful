@@ -29,6 +29,9 @@ pub enum Error {
     #[error("Internal Server Error: {0}")]
     InternalServerError(String),
 
+    #[error("HTTP Request Error: {0}")]
+    HttpRequest(#[from] crate::services::http_request_service::HttpRequestError),
+
     #[error("Too Many Requests")]
     TooManyRequests,
 }

@@ -62,8 +62,8 @@ impl JwtClaims {
 
 pub fn verify_token(token: &str) -> Result<JwtClaims, Error> {
     let decoding_key = DecodingKey::from_secret(config::JWT_SECRET.to_string().as_ref());
-    let mut validation = Validation::default();
-    validation.leeway = 0;
+    let validation = Validation::default();
+    // validation.leeway = 0; // sử dụng leeway để xử lý thời gian hết hạn token, ví dụ thời gian giữa server và client có thể khác nhau, leeway là thời gian cho phép sai số
     let token_data = decode::<JwtClaims>(token, &decoding_key, &validation).map_err(|e| {
         log::error!("Failed to verify token: {:?}", e);
         Error::InternalServerError("Failed to verify token".to_string())

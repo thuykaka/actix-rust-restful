@@ -70,7 +70,7 @@ $ sea-orm-cli generate entity -o entity/src
 
 - [✔️] ~~SeaOrm: https://github.com/SeaQL/sea-query#table-create + https://www.sea-ql.org/~~
 - [✔️] ~~Validation: https://github.com/ranger-ross/actix-web-validation + https://github.com/Keats/validator~~
-- Using http request
+- [✔️] ~~Using http request: https://docs.rs/reqwest/latest/reqwest/~~
 - Using redis
 - Queue
 - Upload file
