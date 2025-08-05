@@ -47,7 +47,21 @@ pub static REFRESH_TOKEN_EXPIRATION_HOURS: Lazy<i64> = Lazy::new(|| {
 
 pub static ACCESS_TOKEN_EXPIRATION_HOURS: Lazy<i64> = Lazy::new(|| {
     env::var("ACCESS_TOKEN_EXPIRATION_HOURS")
-        .unwrap_or_else(|_| "1".to_string())
+        .unwrap_or_else(|_| "8".to_string())
         .parse()
         .expect("ACCESS_TOKEN_EXPIRATION_HOURS must be a valid number")
+});
+
+pub static DEFAULT_PAGE_SIZE: Lazy<u64> = Lazy::new(|| {
+    env::var("DEFAULT_PAGE_SIZE")
+        .unwrap_or_else(|_| "10".to_string())
+        .parse()
+        .expect("DEFAULT_TODOS_LIMIT must be a valid number")
+});
+
+pub static DEFAULT_PAGE: Lazy<u64> = Lazy::new(|| {
+    env::var("DEFAULT_PAGE")
+        .unwrap_or_else(|_| "1".to_string())
+        .parse()
+        .expect("DEFAULT_PAGE must be a valid number")
 });

@@ -1,15 +1,15 @@
-use crate::config;
-use crate::models::db::User;
-use crate::repositories::{
-    refresh_token_repository::RefreshTokenRepository, user_repository::UserRepository,
-};
 use crate::{
+    config,
     models::{
+        db::User,
         errors::Error,
         request::{SignInRequest, SignUpRequest, UpdateUserRequest},
         response::{
             MeResponse, RefreshTokenResponse, SignInResponse, SignUpResponse, UpdateUserResponse,
         },
+    },
+    repositories::{
+        refresh_token_repository::RefreshTokenRepository, user_repository::UserRepository,
     },
     utils::{
         hash::{hash_password, verify_password},
@@ -19,7 +19,6 @@ use crate::{
 use chrono::{Duration, Utc};
 use entity::t_refresh_token;
 use sea_orm::{ActiveValue::Set, IntoActiveModel};
-use std::time::Instant;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -67,26 +66,19 @@ impl AuthService {
         Ok(refresh_token.token.to_string())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn me(&self, user_id: Uuid) -> Result<MeResponse, Error> {
-        let start_time = Instant::now();
-
         let user = self
             .user_repository
             .get_user_by_id(user_id)
             .await?
             .ok_or_else(|| Error::Unauthorized)?;
 
-        log::info!(
-            "auth_service -> me query took {}ms",
-            start_time.elapsed().as_millis()
-        );
-
         Ok(MeResponse(user.into()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn authenticate(&self, body: SignInRequest) -> Result<SignInResponse, Error> {
-        let start_time = Instant::now();
-
         let user = self
             .user_repository
             .get_user_by_email(&body.email)
@@ -110,8 +102,6 @@ impl AuthService {
 
         let refresh_token = self.create_refresh_token(user_converted.clone()).await?;
 
-        log::info!("authenticate took {}ms", start_time.elapsed().as_millis());
-
         Ok(SignInResponse {
             access_token,
             refresh_token,
@@ -119,6 +109,7 @@ impl AuthService {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn update(
         &self,
         user_id: Uuid,
@@ -145,26 +136,18 @@ impl AuthService {
         Ok(UpdateUserResponse(updated_user.into()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn sign_up(&self, body: SignUpRequest) -> Result<SignUpResponse, Error> {
-        let start_time = Instant::now();
         let exists_user_with_email = self.user_repository.get_user_by_email(&body.email).await?;
 
         if exists_user_with_email.is_some() {
             log::warn!("email already exists: {} -> return", body.email);
             return Err(Error::BadRequest("Email already exists".to_string()));
         }
-        log::info!(
-            "check_email_exists took {}ms",
-            start_time.elapsed().as_millis()
-        );
-
-        let start_time = Instant::now();
 
         let user_model = body.into_active_model();
 
         let user = self.user_repository.create_user(user_model).await?;
-
-        log::info!("create_user took {}ms", start_time.elapsed().as_millis());
 
         let user_converted: User = user.into();
         let access_token = self.create_jwt_token(user_converted.clone())?;
@@ -178,9 +161,8 @@ impl AuthService {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn refresh_token(&self, refresh_token: Uuid) -> Result<RefreshTokenResponse, Error> {
-        let start_time = Instant::now();
-
         let refresh_token_model = self
             .refresh_token_repository
             .get_refresh_token(refresh_token)
@@ -195,8 +177,6 @@ impl AuthService {
 
         let user_converted: User = user.into();
         let access_token = self.create_jwt_token(user_converted)?;
-
-        log::info!("refresh_token took {}ms", start_time.elapsed().as_millis());
 
         Ok(RefreshTokenResponse {
             access_token,

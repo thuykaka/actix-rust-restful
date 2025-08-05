@@ -40,7 +40,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum User {
+pub enum User {
     #[sea_orm(iden = "t_users")] // Chỉ định table name là "users"
     Table,
     Id,

@@ -7,6 +7,9 @@ pub enum Error {
     #[error("sea_orm::DbErr: {0}")]
     Db(#[from] sea_orm::DbErr),
 
+    #[error("sea_orm::TransactionError: {0}")]
+    Transaction(#[from] sea_orm::TransactionError<sea_orm::DbErr>),
+
     #[error("serde_json::Error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 
@@ -46,29 +49,29 @@ impl ErrorToHttp for Error {
     fn to_http_response(&self) -> HttpResponse {
         match self {
             Error::Unauthorized => HttpResponse::Unauthorized().json(json!({
-                "status_code": 401,
+                "statusCode": 401,
                 "message": "Unauthorized",
             })),
 
             Error::UnauthorizedWithMessage(message) => HttpResponse::Unauthorized().json(json!({
-                "status_code": 401,
+                "statusCode": 401,
                 "message": message,
             })),
 
             Error::BadRequest(message) => HttpResponse::BadRequest().json(json!({
-                "status_code": 400,
+                "statusCode": 400,
                 "message": message,
             })),
 
             Error::TooManyRequests => HttpResponse::TooManyRequests().json(json!({
-                "status_code": 429,
+                "statusCode": 429,
                 "message": "Too Many Requests",
             })),
 
             _ => {
                 log::error!("Internal server error: {:?}", self);
                 HttpResponse::InternalServerError().json(json!({
-                    "status_code": 500,
+                    "statusCode": 500,
                     "message": "Internal server error",
                 }))
             } // 5xx Server Errors
