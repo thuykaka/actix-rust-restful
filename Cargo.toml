@@ -21,6 +21,7 @@ serde_json = "1.0"                                   # JSON serialization/deseri
 # Async runtime và utilities
 futures = "0.3"  # Async programming utilities
 tokio = { version = "1.47.0", features = ["full", "test-util"] } # Async runtime cho Rust
+async-trait = "0.1.88"
 
 # Utilities
 uuid = { version = "1.17.0", features = ["v4"] }  # UUID generation
@@ -35,6 +36,9 @@ chrono = "0.4.41"     # Date/time utilities
 sea-orm = { version = "1.1.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "debug-print" ] }  # Async ORM cho PostgreSQL
 entity = { path = "entity" }      # Generated database entities
 migration = { path = "migration" } # Database migrations
+
+# redis
+redis = { version = "0.32.4", features = ["tokio-comp", "connection-manager", "tokio-native-tls-comp"] }
 
 # Security
 argon2 = "0.5.3"      # Password hashing algorithm
@@ -54,4 +58,5 @@ regex = "1.11.1"  # Regular expressions
 
 # HTTP client library
 reqwest = { version = "0.12.22", features = ["json"] }
+
 

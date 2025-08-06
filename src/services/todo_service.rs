@@ -1,5 +1,6 @@
 use crate::{
     config,
+    daos::redis_dao::{RedisDao, RedisOperations},
     models::{
         errors::Error,
         request::{self, GetAllTodosRequest, UpdateTodoRequest},
@@ -18,10 +19,11 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct TodoService {
     pub todo_repository: TodoRepository,
+    pub redis_dao: RedisDao,
     pub http_request_service: HttpRequestService,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct ExternalTodo {
     id: u32,
     todo: String,
@@ -30,7 +32,7 @@ struct ExternalTodo {
     user_id: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ExternalTodosResponse {
     todos: Vec<ExternalTodo>,
     total: u32,
@@ -39,9 +41,13 @@ pub struct ExternalTodosResponse {
 }
 
 impl TodoService {
-    pub fn new(todo_repository: TodoRepository) -> Result<Self, HttpRequestError> {
+    pub fn new(
+        todo_repository: TodoRepository,
+        redis_dao: RedisDao,
+    ) -> Result<Self, HttpRequestError> {
         Ok(Self {
             todo_repository,
+            redis_dao,
             http_request_service: HttpRequestService::new()?,
         })
     }
@@ -146,12 +152,33 @@ impl TodoService {
         Ok(updated_todo)
     }
 
-    // Test call external API
+    // Test call external API with cache
     pub async fn get_external_data(&self) -> Result<ExternalTodosResponse, Error> {
+        let key = "EXTERNAL_TODOS";
+
+        let cached_value = match self.redis_dao.get::<ExternalTodosResponse>(key).await {
+            Ok(value) => value,
+            Err(_) => None,
+        };
+
+        if let Some(cached_data) = cached_value {
+            log::info!("cache hit for external todos");
+            return Ok(cached_data);
+        }
+
         let resp = self
             .http_request_service
             .get::<ExternalTodosResponse>("https://dummyjson.com/todos")
             .await?;
+
+        let redis_dao = self.redis_dao.clone();
+        let resp_clone = resp.clone();
+        tokio::spawn(async move {
+            match redis_dao.set(key, &resp_clone).await {
+                Ok(_) => log::info!("successfully cached external todos"),
+                Err(e) => log::error!("failed to set value: {:?}", e),
+            }
+        });
 
         Ok(resp)
     }

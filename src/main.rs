@@ -1,6 +1,7 @@
 mod app_state;
 mod config;
 mod controllers;
+mod daos;
 mod middlewares;
 mod models;
 mod repositories;
