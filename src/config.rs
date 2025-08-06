@@ -13,6 +13,9 @@ pub static DATABASE_URL: Lazy<String> = Lazy::new(|| {
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string())
 });
 
+pub static REDIS_URL: Lazy<String> =
+    Lazy::new(|| env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string()));
+
 pub static JWT_SECRET: Lazy<String> = Lazy::new(|| {
     env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key-change-in-production".to_string())
 });

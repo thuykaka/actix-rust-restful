@@ -71,7 +71,7 @@ $ sea-orm-cli generate entity -o entity/src
 - [✔️] ~~SeaOrm: https://github.com/SeaQL/sea-query#table-create + https://www.sea-ql.org/~~
 - [✔️] ~~Validation: https://github.com/ranger-ross/actix-web-validation + https://github.com/Keats/validator~~
 - [✔️] ~~Using http request: https://docs.rs/reqwest/latest/reqwest/~~
-- Using redis
+- [✔️] ~~Using redis: https://github.com/redis-rs/redis-rs~~
 - Queue
 - Upload file
 - [✔️] ~~CORS: https://github.com/actix/actix-extras/tree/master/actix-cors~~
