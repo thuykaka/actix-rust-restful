@@ -59,4 +59,9 @@ regex = "1.11.1"  # Regular expressions
 # HTTP client library
 reqwest = { version = "0.12.22", features = ["json"] }
 
+# OpenAPI document
+utoipa = "5.4.0"
+utoipa-actix-web = "0.1.2"
 
+# Cron
+tokio-cron-scheduler = "*"

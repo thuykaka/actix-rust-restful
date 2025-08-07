@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, ResponseError};
 use serde_json::json;
+use tokio_cron_scheduler::JobSchedulerError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -31,6 +32,9 @@ pub enum Error {
 
     #[error("HTTP Request Error: {0}")]
     HttpRequest(#[from] crate::services::http_request_service::HttpRequestError),
+
+    #[error("Job Scheduler Error: {0}")]
+    JobScheduler(#[from] JobSchedulerError),
 
     #[error("Too Many Requests")]
     TooManyRequests,

@@ -86,6 +86,7 @@ $ sea-orm-cli generate entity -o entity/src
 - websocket
 - [✔️] ~~datetime db: using chrono~~
 - [✔️] ~~refresh token~~
+- [✔️] ~~Cronjob: https://github.com/mvniekerk/tokio-cron-scheduler~~
 
 ## 6. Refers
 
