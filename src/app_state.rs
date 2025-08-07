@@ -34,7 +34,7 @@ impl AppState {
 
         // Create services
         let (auth_service, todo_service) =
-            Self::create_services(user_repo, refresh_repo, todo_repo, redis_dao)?;
+            Self::create_services(user_repo, refresh_repo, todo_repo, redis_dao).await?;
 
         log::info!("Application state initialized successfully");
 
@@ -85,7 +85,7 @@ impl AppState {
         (user_repository, refresh_token_repository, todo_repository)
     }
 
-    fn create_services(
+    async fn create_services(
         user_repo: UserRepository,
         refresh_repo: RefreshTokenRepository,
         todo_repo: TodoRepository,

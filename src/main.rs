@@ -22,6 +22,7 @@ use dotenv::dotenv;
 use env_logger::Env;
 use middlewares::rate_limit_middleware::rate_limiter_middleware;
 use models::errors::Error;
+use services::job_service::JobService;
 use std::sync::Arc;
 use utils::{request_handler::json_error_handler, response_handler::validator_error_handler};
 
@@ -33,6 +34,10 @@ async fn main() -> Result<(), Error> {
 
     // Init database connection and services
     let app_state = AppState::new().await?;
+
+    // Init job service (runs independently)
+    let job_service = JobService::new().await?;
+    job_service.start().await?;
 
     // App data
     let app_data = web::Data::new(app_state);
