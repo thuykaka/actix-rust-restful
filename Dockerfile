@@ -1,66 +1,86 @@
-# based on
-# https://kerkour.com/rust-small-docker-image
+# Optimized multi-stage Dockerfile for Rust Actix-web
+# Based on cargo-chef for optimal layer caching
 
 ####################################################################################################
-## Cargo Chef
+## Cargo Chef - Dependency Planner
 ####################################################################################################
-FROM rust:latest AS chef
+FROM rustlang/rust:nightly-bookworm AS chef
 
-RUN cargo install cargo-chef 
+# Install cargo-chef for dependency caching
+RUN cargo install cargo-chef --locked
 
 WORKDIR /app
 
+####################################################################################################
+## Plan Dependencies
+####################################################################################################
 FROM chef AS planner
 
-COPY . .
+# Copy manifest files and source structure for dependency analysis
+COPY Cargo.toml Cargo.lock ./
+COPY entity/ ./entity/
+COPY migration/ ./migration/
+COPY src/ ./src/
 
-RUN cargo chef prepare  --recipe-path recipe.json
+# Generate recipe for dependencies
+RUN cargo chef prepare --recipe-path recipe.json
+
+####################################################################################################
+## Build Dependencies
+####################################################################################################
+FROM chef AS dependencies
+
+# Copy the recipe and workspace structure
+COPY --from=planner /app/recipe.json recipe.json
+COPY --from=planner /app/Cargo.toml /app/Cargo.lock ./
+COPY --from=planner /app/entity/ ./entity/
+COPY --from=planner /app/migration/ ./migration/
+
+# Build dependencies only
+RUN cargo chef cook --release --recipe-path recipe.json
 
 ####################################################################################################
 ## Builder
 ####################################################################################################
-FROM chef AS builder
+FROM dependencies AS builder
 
-RUN rustup target add x86_64-unknown-linux-musl
-RUN apt update && apt install -y musl-tools musl-dev
-RUN update-ca-certificates
-
-# Create appuser
-ENV USER=nonroot
-ENV UID=10001
-
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    "${USER}"
-
-COPY --from=planner /app/recipe.json recipe.json
-# Build dependencies - this is the caching Docker layer!
-RUN cargo chef cook --release --recipe-path recipe.json
-
+# Copy source code
 COPY . .
 
-RUN cargo build --target x86_64-unknown-linux-musl --release
+# Build the application
+RUN cargo build --release
 
 ####################################################################################################
-## Final image
+## Runtime Environment
 ####################################################################################################
-FROM scratch AS runtime
+FROM debian:bookworm-slim AS runtime
 
-# Import from builder.
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
+# Install runtime dependencies and CA certificates
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libssl3 \
+        libpq5 && \
+    rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for security
+RUN groupadd -r appuser && \
+    useradd -r -g appuser -s /bin/false -M appuser
+
+# Set working directory
 WORKDIR /app
 
-# Copy our build
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/actix_rust_restful ./
+# Copy the compiled binary
+COPY --from=builder /app/target/release/actix_rust_restful ./
 
-# Use an unprivileged user.
-USER nonroot:nonroot
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
 
-CMD ["/app/actix_rust_restful"]
+# Switch to non-root user
+USER appuser
+
+# Expose port (configurable via environment)
+EXPOSE 3000
+
+# Run the application
+CMD ["./actix_rust_restful"]
